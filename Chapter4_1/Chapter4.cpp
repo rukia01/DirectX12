@@ -318,6 +318,40 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		0,
 		&_vsBlob, &errorBlob);  //エラー時はerrorBlobにメッセージが入る
 
+	if (FAILED(result))
+	{
+		if (result == HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND))
+		{
+			::OutputDebugStringA("ファイルが見当たりません");
+			return 0;  //exit()などに適宣置き換えるほうがよい
+		}
+		else
+		{
+			string errstr;
+			errstr.resize(errorBlob->GetBufferSize());
+
+			copy_n((char*)errorBlob->GetBufferPointer(),
+				errorBlob->GetBufferSize(),
+				errstr.begin());
+			errstr += "\n";
+
+			::OutputDebugStringA(errstr.c_str());
+		}
+	}
+
+	D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
+		{
+			"POSITION",
+			0,
+			DXGI_FORMAT_R32G32B32_FLOAT,
+			0,
+			D3D12_APPEND_ALIGNED_ELEMENT,
+			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
+			0
+		},
+	};
+
+
 
 	MSG	msg = {};
 	float clearColor[] = { 1.0f, 1.0f, 0.0f, 1.0f }; //黄色
