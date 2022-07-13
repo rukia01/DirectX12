@@ -323,7 +323,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		if (result == HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND))
 		{
 			::OutputDebugStringA("ファイルが見当たりません");
-			return 0;  //exit()などに適宣置き換えるほうがよい
 		}
 		else
 		{
@@ -337,6 +336,23 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 			::OutputDebugStringA(errstr.c_str());
 		}
+		exit(1);
+	}
+	else
+	{
+		if (result == HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND)) 
+		{
+			::OutputDebugStringA("シェーダーファイルが見当たりません");
+		}
+		else
+		{
+			std::string errstr;
+			errstr.resize(errorBlob->GetBufferSize());
+			std::copy_n((char*)errorBlob->GetBufferPointer(), errorBlob->GetBufferSize(), errstr.begin());
+			errstr += "\n";
+			OutputDebugStringA(errstr.c_str());
+		}
+		exit(1);
 	}
 
 	D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
@@ -381,6 +397,63 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	gpipeline.BlendState.RenderTarget[0] = renderTargetBlendDesc;
 
+	gpipeline.DepthStencilState.DepthEnable = false;
+	gpipeline.DepthStencilState.StencilEnable = false;
+
+	gpipeline.InputLayout.pInputElementDescs = inputLayout;  //レイアウト先頭アドレス
+	gpipeline.InputLayout.NumElements = _countof(inputLayout);  //レイアウト配列の要素数
+
+	gpipeline.IBStripCutValue = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED;  //カットなし
+
+	gpipeline.NumRenderTargets = 1;  //今は1つのみ
+	gpipeline.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;  //0～1に正常化されたRGBA
+
+	gpipeline.SampleDesc.Count = 1;  //サンプリングは1ピクセルにつき1
+	gpipeline.SampleDesc.Quality = 0;  //クオリティは最低
+
+	ID3D12RootSignature* rootsignature;
+	D3D12_ROOT_SIGNATURE_DESC rootSignaturDesc = {};
+
+	rootSignaturDesc.Flags =
+		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+
+	ID3DBlob* rootSigBlob = nullptr;
+
+	result = D3D12SerializeRootSignature(
+		&rootSignaturDesc,  //ルートシグネチャ設定
+		D3D_ROOT_SIGNATURE_VERSION_1_0,  //ルートシグネチャバージョン
+		&rootSigBlob,  //シェーダーを作った時と同じ
+		&errorBlob);  //エラー処置も同じ
+
+	result = _dev->CreateRootSignature(
+		0,
+		rootSigBlob->GetBufferPointer(),
+		rootSigBlob->GetBufferSize(),
+		IID_PPV_ARGS(&rootsignature));
+	rootSigBlob->Release();
+	gpipeline.pRootSignature = rootsignature;
+
+	ID3D12PipelineState* _pipelinestate = nullptr;
+
+	result = _dev->CreateGraphicsPipelineState(
+		&gpipeline, IID_PPV_ARGS(&_pipelinestate));
+
+	D3D12_VIEWPORT viewport = {};
+
+	viewport.Width = window_width;  //出力先の幅（ピクセル数）
+	viewport.Height = window_height;  //出力先の高さ（ピクセル数）
+	viewport.TopLeftX = 0;  //出力先の左上座上X
+	viewport.TopLeftY = 0;  //出力先の左上座標Y
+	viewport.MaxDepth = 1.0f;  //深度最大値
+	viewport.MinDepth = 0.0f;  //深度最小値
+
+	D3D12_RECT scissorrect = {};
+
+	scissorrect.top = 0;  //切り抜き上座標
+
+	scissorrect.left = 0;  //切り抜き左座標
+	scissorrect.right = scissorrect.left + window_width;  //切り抜き右座標
+	scissorrect.bottom = scissorrect.top + window_height;  //切り抜き下座標
 
 
 	MSG	msg = {};
@@ -420,10 +493,17 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		BarrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
 		////
 
+		_cmdList->SetPipelineState(_pipelinestate);
+
 		auto rtvH = rtvHeaps->GetCPUDescriptorHandleForHeapStart();
 		rtvH.ptr += bbIdx * _dev->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 		_cmdList->OMSetRenderTargets(1, &rtvH, true, nullptr);
 		_cmdList->ClearRenderTargetView(rtvH, clearColor, 0, nullptr);
+
+		_cmdList->SetGraphicsRootSignature(rootsignature);
+		_cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		_cmdList->IASetVertexBuffers(0, 1, &vbView);
+		_cmdList->DrawInstanced(3, 1, 0, 0);
 
 		//// Chapter3_4_3　 リソースバリア
 		BarrierDesc.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
