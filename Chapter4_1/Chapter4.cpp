@@ -247,10 +247,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	//};
 
 	XMFLOAT3 vertices[] = {
-		{-0.4f, -0.7f, 0.0f} , // 左下
-		{-0.4f, 0.7f, 0.0f} , // 左上
-		{0.4f, -0.7f, 0.0f} , // 右下
-		{0.4f, 0.7f, 0.0f},  //右上
+		{0.9f, -0.4f, 0.0f},  //右中
+		{-0.4f, -0.4f, 0.0f} , // 左下
+		{-0.4f, 0.4f, 0.0f} , // 左上
+		{0.4f, -0.4f, 0.0f} , // 右下
+		{0.4f, 0.4f, 0.0f},  //右上
 	};
 
 
@@ -483,7 +484,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	scissorrect.bottom = scissorrect.top + window_height; // 切り抜き下座標
 
 	MSG	msg = {};
-	float clearColor[] = { 1.0f, 1.0f, 0.0f, 1.0f }; //黄色
+	float clearColor[] = { 1.0f, 0.0f, 0.0f, 1.0f }; //黄色
 
 	while (true) {
 		if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
@@ -525,8 +526,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		_cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 		_cmdList->IASetVertexBuffers(0, 1, &vbView);
 		_cmdList->IASetIndexBuffer(&ibView);
-		//_cmdList->DrawInstanced(4, 1, 0, 0);
-		_cmdList->DrawIndexedInstanced(6, 1, 0, 0, 0);
+		_cmdList->DrawInstanced(5, 1, 0, 0);
+		//_cmdList->DrawIndexedInstanced(6, 1, 0, 0, 0);
 
 		//// Chapter3_4_3　 リソースバリア
 		BarrierDesc.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
