@@ -498,6 +498,63 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	scissorrect.right = scissorrect.left + window_width; // 切り抜き右座標
 	scissorrect.bottom = scissorrect.top + window_height; // 切り抜き下座標
 
+	//Chapter5_4
+	struct TexRGBA
+	{
+		unsigned char R, G, B, A;
+	};
+
+	vector<TexRGBA> texturedate(256 * 256);
+
+	for (auto& rgba : texturedate)
+	{
+		rgba.R = rand() % 256;
+		rgba.G = rand() % 256;
+		rgba.B = rand() % 256;
+		rgba.A = 256;  //aは1.0とする
+	}
+
+	//Chapter5.5.1
+	//WriteToSubresourceで転送するためのヒープ設定
+	D3D12_HEAP_PROPERTIES heapprop = {};
+
+	//特殊な設定なのでDEFAULTでもUPLOADでもない
+	heapprop.Type = D3D12_HEAP_TYPE_CUSTOM;
+
+	//ライトバック
+	heapprop.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_WRITE_BACK;
+
+	//転送はL0、つまりCPU側から直接行う
+	heapprop.MemoryPoolPreference = D3D12_MEMORY_POOL_L0;
+
+	//単一アダプターのため0
+	heapprop.CreationNodeMask = 0;
+	heapprop.VisibleNodeMask = 0;
+
+	D3D12_RESOURCE_DESC resDesc = {};
+
+	resDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;  //RGBAフォーマット
+	resDesc.Width = 256;  //幅
+	resDesc.Height = 256;  //高さ
+	resDesc.DepthOrArraySize = 1;  //2Dで配列でもないので1
+	resDesc.SampleDesc.Count = 1;  //通常テクスチャなのでアンチエイリアシングしない
+	resDesc.SampleDesc.Quality = 0;  //クオリティは最低
+	resDesc.MipLevels = 1;  //ミップマップしないのでミップ数は1つ
+	resDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;  //2Dテクスチャ用
+	resDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;  //レイアウトは設定しない
+	resDesc.Flags = D3D12_RESOURCE_FLAG_NONE;   //特にフラグなし
+
+	ID3D12Resource* texbuff = nullptr;
+
+	result = _dev->CreateCommittedResource(
+		&heapprop,
+		D3D12_HEAP_FLAG_NONE,  //特に指定なし
+		&resDesc,
+		D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,  //テクスチャ用設定
+		nullptr,
+		IID_PPV_ARGS(&texbuff));
+
+
 	MSG	msg = {};
 	float clearColor[] = { 1.0f, 0.0f, 0.0f, 1.0f }; //黄色
 
